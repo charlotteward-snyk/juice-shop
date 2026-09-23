@@ -1,0 +1,143 @@
+name: Snyk Security Scans
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Weekly monitor run so Snyk keeps watching for newly disclosed vulns
+  # even when nobody opens a PR that week.
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF to the Security tab
+
+concurrency:
+  group: snyk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ---------------------------------------------------------------------
+  # 1. Snyk Open Source — dependency (SCA) vulnerabilities in package.json
+  # ---------------------------------------------------------------------
+  snyk-open-source:
+    name: Snyk Open Source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: snyk/actions/setup@master
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "14"   # matches "engines".node ("10 - 14") in package.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: snyk test (fails build on new issues)
+        run: snyk test --severity-threshold=high --sarif-file-output=snyk-open-source.sarif
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true   # let the SARIF upload run even if issues are found
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-open-source.sarif
+          category: snyk-open-source
+
+      # Gated to pushes on main only: `snyk monitor` uploads a snapshot to the
+      # Snyk UI as a standing project rather than just failing/passing a build.
+      # Running it on every PR/branch build would create a new throwaway
+      # project per branch and flood the Snyk UI. `--target-reference=main`
+      # also keeps this snapshot's identity stable across runs so each new
+      # push updates the same project instead of creating a duplicate.
+      - name: snyk monitor (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: snyk monitor --target-reference=main
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # ---------------------------------------------------------------------
+  # 2. Snyk Code — static analysis (SAST) of first-party source code
+  # ---------------------------------------------------------------------
+  snyk-code:
+    name: Snyk Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: snyk/actions/setup@master
+
+      - name: snyk code test
+        run: snyk code test --severity-threshold=high --sarif-file-output=snyk-code.sarif
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-code.sarif
+          category: snyk-code
+
+  # ---------------------------------------------------------------------
+  # 3. Snyk Container — vulnerabilities in the built juice-shop image
+  # ---------------------------------------------------------------------
+  snyk-container:
+    name: Snyk Container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t juice-shop:${{ github.sha }} .
+
+      - name: Run Snyk to check the image for vulnerabilities
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: juice-shop:${{ github.sha }}
+          args: >
+            --file=Dockerfile
+            --severity-threshold=high
+            --sarif-file-output=snyk-container.sarif
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-container.sarif
+          category: snyk-container
+
+  # ---------------------------------------------------------------------
+  # 4. Snyk IaC — misconfigurations in Dockerfile / k8s / Terraform, etc.
+  # ---------------------------------------------------------------------
+  snyk-iac:
+    name: Snyk IaC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Snyk IaC test
+        uses: snyk/actions/iac@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif
+          category: snyk-iac
