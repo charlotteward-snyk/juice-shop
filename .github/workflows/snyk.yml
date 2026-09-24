@@ -39,7 +39,7 @@ jobs:
         run: npm ci
 
       - name: snyk test (fails build on new issues)
-        run: snyk test --severity-threshold=high --sarif-file-output=snyk-open-source.sarif
+        run: snyk test --severity-threshold=high --sarif-file-output=snyk-open-source.sarif --org=e26614c3-0d2f-4d8c-96cd-965b4a765109
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true   # let the SARIF upload run even if issues are found
@@ -75,7 +75,7 @@ jobs:
       - uses: snyk/actions/setup@master
 
       - name: snyk code test
-        run: snyk code test --severity-threshold=high --sarif-file-output=snyk-code.sarif
+        run: snyk code test --severity-threshold=high --sarif-file-output=snyk-code.sarif --org=e26614c3-0d2f-4d8c-96cd-965b4a765109
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
@@ -110,6 +110,7 @@ jobs:
             --file=Dockerfile
             --severity-threshold=high
             --sarif-file-output=snyk-container.sarif
+            --org=e26614c3-0d2f-4d8c-96cd-965b4a765109
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()
@@ -133,7 +134,9 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
+          args: >
+            --severity-threshold=high
+            --org=e26614c3-0d2f-4d8c-96cd-965b4a765109
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()
