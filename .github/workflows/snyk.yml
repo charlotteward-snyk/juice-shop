@@ -2,9 +2,9 @@ name: Snyk Security Scans
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
   # Weekly monitor run so Snyk keeps watching for newly disclosed vulns
   # even when nobody opens a PR that week.
   schedule:
@@ -51,15 +51,15 @@ jobs:
           sarif_file: snyk-open-source.sarif
           category: snyk-open-source
 
-      # Gated to pushes on main only: `snyk monitor` uploads a snapshot to the
+      # Gated to pushes on master only: `snyk monitor` uploads a snapshot to the
       # Snyk UI as a standing project rather than just failing/passing a build.
       # Running it on every PR/branch build would create a new throwaway
-      # project per branch and flood the Snyk UI. `--target-reference=main`
+      # project per branch and flood the Snyk UI. `--target-reference=master`
       # also keeps this snapshot's identity stable across runs so each new
       # push updates the same project instead of creating a duplicate.
-      - name: snyk monitor (main only)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: snyk monitor --target-reference=main
+      - name: snyk monitor (master only)
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: snyk monitor --target-reference=master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
