@@ -134,10 +134,10 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          file: .
           args: >
             --severity-threshold=high
             --org=e26614c3-0d2f-4d8c-96cd-965b4a765109
+            --sarif-file-output=snyk.sarif
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()
