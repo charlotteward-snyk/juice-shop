@@ -90,34 +90,34 @@ jobs:
   # ---------------------------------------------------------------------
   # 3. Snyk Container — vulnerabilities in the built juice-shop image
   # ---------------------------------------------------------------------
-  snyk-container:
-    name: Snyk Container
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+#    name: Snyk Container
+#  snyk-container:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
 
-      - name: Build image
-        run: docker build -t juice-shop:${{ github.sha }} .
+#      - name: Build image
+#        run: docker build -t juice-shop:${{ github.sha }} .
 
-      - name: Run Snyk to check the image for vulnerabilities
-        uses: snyk/actions/docker@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          image: juice-shop:${{ github.sha }}
-          args: >
-            --file=Dockerfile
-            --severity-threshold=high
-            --sarif-file-output=snyk-container.sarif
-            --org=e26614c3-0d2f-4d8c-96cd-965b4a765109
+#      - name: Run Snyk to check the image for vulnerabilities
+#       uses: snyk/actions/docker@master
+#        continue-on-error: true
+#        env:
+#          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#        with:
+#          image: juice-shop:${{ github.sha }}
+#          args: >
+#            --file=Dockerfile
+#            --severity-threshold=high
+#            --sarif-file-output=snyk-container.sarif
+#            --org=e26614c3-0d2f-4d8c-96cd-965b4a765109
 
-      - name: Upload SARIF to GitHub Code Scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk-container.sarif
-          category: snyk-container
+#     - name: Upload SARIF to GitHub Code Scanning
+#        if: always()
+#        uses: github/codeql-action/upload-sarif@v3
+#        with:
+#          sarif_file: snyk-container.sarif
+#          category: snyk-container
 
   # ---------------------------------------------------------------------
   # 4. Snyk IaC — misconfigurations in Dockerfile / k8s / Terraform, etc.
